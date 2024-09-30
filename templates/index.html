@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Title</title>
+</head>
+<body>
+	<div style="display:flex">
+		<a>Search in database</a>
+		<input id="search" type="text">
+		<button onclick="search()">confirm</button>
+		<button onclick="main.sync()">sync with database</button>
+		<button onclick="main.createRecipe()">create new item</button>
+	</div>
+	<section style="margin: 5%">
+		<div style="display:flex; margin-bottom: 5%">
+			<h1 id="item name">ItemPlaceholderName</h1>
+			<img id="icon" src="" width="100" height="100">
+		</div>
+		<div style="display:flex">
+			<a>Item tier</a>
+			<input id="tier" type="number">
+		</div>
+		<div style="display:flex">
+			<a>Ficsit points</a>
+			<input id="points" type="number">
+		</div>
+		<div style="display:flex">
+			<a style="margin-right: 20;">Produced per minute:</a>
+			<a id="ppm">0</a>
+		</div>
+	</section>
+	<div style="display:flex; margin: 5%">
+		<a>Recipe ID</a>
+		<input id="recipe" type="number" value="0" onchange="changeRecipe()">
+	</div>
+	<section style="margin: 5%; display: flex">
+		<div style="margin: 2%">
+			<img id="item1" src="" width="100" height="100">
+			<a>in recipe:</a>
+			<a id="count1">0</a>
+			<a>needed:</a>
+			<a style="color: red" id="need1">0</a>
+			<a>provided:</a>
+			<a style="color: green" id="prov1">0</a>
+		</div>
+		<div style="margin: 2%">
+			<img id="item2" src="" width="100" height="100">
+			<a>in recipe:</a>
+			<a id="count2">0</a>
+			<a>needed:</a>
+			<a style="color: red" id="need2">0</a>
+			<a>provided:</a>
+			<a style="color: green" id="prov2">0</a>
+		</div>
+		<div style="margin: 2%">
+			<img id="item3" src="" width="100" height="100">
+			<a>in recipe:</a>
+			<a id="count3">0</a>
+			<a>needed:</a>
+			<a style="color: red" id="need3">0</a>
+			<a>provided:</a>
+			<a style="color: green" id="prov3">0</a>
+		</div>
+		<div style="margin: 2%">
+			<img id="item4" src="" width="100" height="100">
+			<a>in recipe:</a>
+			<a id="count4">0</a>
+			<a>needed:</a>
+			<a style="color: red" id="need4">0</a>
+			<a>provided:</a>
+			<a style="color: green" id="prov4">0</a>
+		</div>
+		<div style="margin: 2%">
+			<img id="byproduct" src="" width="100" height="100">
+			<a>byproduct in recipe:</a>
+			<a id="byproduct in recipe">0</a>
+			<a>produced:</a>
+			<a style="color: red" id="byproduct produced">0</a>
+		</div>
+		<div style="margin: 2%">
+			<a>item itself in recipe:</a>
+			<a id="selfcount">0</a>
+			<a>produced per minute:</a>
+			<input type="number" id="produced" onchange="itemCountChange()">
+		</div>
+		<a>is preferred:</a>
+		<input type="checkbox" id="isPreferred" onchange="checkRecipe()">
+	</section>
+	<script src='{{url_for("static", filename="calculator.js")}}'></script>
+</body>
+</html>
