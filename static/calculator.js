@@ -428,8 +428,14 @@ class Item{
 	}
 
 	displayRecipe(id){
-	    let b = 1;
 		if (this.recipes.length === 0){return}
+		for (let a = 1; a <= 4; a++){
+			document.getElementById("item" + a).src = "";
+			document.getElementById("count" + a).innerHTML = "0";
+			document.getElementById("need" + a).innerHTML = "0";
+			document.getElementById("prov" + a).innerHTML = "0";
+		}
+	    let b = 1;
 		for (let a in this.recipes[id].items){
 			if (a === "result"){
 				continue;
@@ -437,7 +443,11 @@ class Item{
 			document.getElementById("item" + b).src = "/static/" + a + ".png";
 			document.getElementById("count" + b).innerHTML = this.recipes[id].items[a];
 			document.getElementById("need" + b).innerHTML = this.recipes[id].items[a] / this.recipes[id].items.result * this.recipes[id].actualProduction;
-			document.getElementById("prov" + b).innerHTML = main.getItem(a).getActualProduction();
+			if (typeof main.getItem(a) !== "undefined"){
+			    document.getElementById("prov" + b).innerHTML = main.getItem(a).getActualProduction();
+			} else {
+			    document.getElementById("prov" + b).innerHTML = "not avaliable";
+			}
 			b++;
 		}
 		for (let a in this.recipes[id].byproducts){
