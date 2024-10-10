@@ -8,9 +8,12 @@
 	<div style="display:flex">
 		<a>Search in database</a>
 		<input id="search" type="text">
-		<button onclick="search()">confirm</button>
+		<button onclick="main.search()">confirm</button>
 		<button onclick="main.sync()">sync with database</button>
 		<button onclick="main.createRecipe()">create new item</button>
+		<input type="number" id="searchableTier" value="1">
+		<button onclick="main.displayEstimate()">display item estimate (current recipe)</button>
+		<button onclick="main.displayBest()">display best recipe</button>
 	</div>
 	<section style="margin: 5%">
 		<div style="display:flex; margin-bottom: 5%">
@@ -32,7 +35,7 @@
 	</section>
 	<div style="display:flex; margin: 5%">
 		<a>Recipe ID</a>
-		<input id="recipe" type="number" value="0" onchange="changeRecipe()">
+		<input id="recipe" type="number" value="0" onchange="main.changeRecipe()">
 	</div>
 	<section style="margin: 5%; display: flex">
 		<div style="margin: 2%">
@@ -82,10 +85,10 @@
 			<a>item itself in recipe:</a>
 			<a id="selfcount">0</a>
 			<a>produced per minute:</a>
-			<input type="number" id="produced" onchange="itemCountChange()">
+			<input type="number" id="produced" onchange="main.itemCountChange()">
 		</div>
 		<a>is preferred:</a>
-		<input type="checkbox" id="isPreferred" onchange="checkRecipe()">
+		<input type="checkbox" id="isPreferred" onchange="main.checkRecipe()">
 	</section>
 	<script src='{{url_for("static", filename="calculator.js")}}'></script>
 </body>

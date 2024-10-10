@@ -50,7 +50,7 @@ class Main{
 			}
 			currentRecipe.building = prompt("enter building name");
 		}
-		a.preferred = 0;
+		a.preferred = -1;
 	}
 
 	getItem(name){
@@ -274,6 +274,50 @@ class Main{
 			received = txt;
 		})
 	}
+	//handler functions
+	changeRecipe(){
+		main.getItem(document.getElementById('item name').innerHTML).displayRecipe(document.getElementById('recipe').value);
+	}
+	
+	itemCountChange(){
+		main.getItem(document.getElementById('item name').innerHTML).changeProduction(document.getElementById('recipe').value, parseFloat(document.getElementById('produced').value));
+		main.getItem(document.getElementById('item name').innerHTML).displayRecipe(document.getElementById('recipe').value);
+	}
+	
+	checkRecipe(){
+		if (document.getElementById('isPreferred').checked){
+			main.getItem(document.getElementById('item name').innerHTML).preferred = parseFloat([document.getElementById('recipe').value]);
+		} else {
+			main.getItem(document.getElementById('item name').innerHTML).preferred = main.getItem(document.getElementById('item name').innerHTML).getMostResourceEfficientNumber();
+		}
+	}
+	
+	search(){
+		main.getItem(document.getElementById('search').value).displayItem();
+	}
+
+	displayEstimate(){
+		let a = 
+		main.getItem(
+			document.getElementById('item name').innerHTML
+		).getRecipeData(
+			parseFloat(document.getElementById('recipe').value),
+			parseFloat(document.getElementById('searchableTier').value)
+		)
+		let SUM = 0;
+		for (let b in a){//adds up every resource into one number
+			SUM += a[b];
+		}
+		a.SUM = SUM;
+		alert(this.packJson(a));
+	}
+
+	displayBest(){
+		let a = main.getItem(document.getElementById('item name').innerHTML);
+		let bestNum = a.getMostResourceEfficientNumber(parseFloat(document.getElementById('searchableTier').value));
+		a.displayRecipe(bestNum);
+		document.getElementById('recipe').value = bestNum;
+	}
 }
 
 
@@ -312,20 +356,30 @@ class Item{
 		return obj;
 	}
 
-	getMostResourceEfficient(minimalTier = 1, countWater = false, subtractByproducts = false){//TODO add converter ratios?
+	getBestRecipeData(minimalTier, countWater, usePreferred = true, subtractByproducts, id = -1){//if id is -1, will pick best recipe, otherwise, id one
 		if (this.tier <= minimalTier){//for one part
 			let obj = {};
 			obj[this.type] = 1;
-			return obj;
+			return [obj, 0];
 		}
 		let cheapest = 0;
 		let cheapestValue = 100000;
 		let totalResources = {};
-		for (let a in this.recipes){
+		let recipesLength = this.recipes.length;
+		let a0 = 0;
+		if (id >= 0){
+			a0 = id;
+			recipesLength = id + 1;
+		} else if (usePreferred && this.preferred >= 0){
+			a0 = this.preferred;
+			recipesLength = a0 + 1;
+		}
+		for (let a = a0; a < recipesLength; a++){
 			let value = 0;
 			let resources = {};
 			let parts = Object.entries(this.forOnePart(a, subtractByproducts));
 			for (let b in parts){
+				if (parts[b][0] === "water" && !countWater){continue}
 				let currentItem = main.getItem(parts[b][0]);
 				if (typeof currentItem === 'undefined'){
 					let x = {};
@@ -333,10 +387,10 @@ class Item{
 					this.smartObjectAddition(resources, x);
 					continue;
 				}
-				let partCost = currentItem.getMostResourceEfficient(minimalTier, countWater, subtractByproducts);
+				let partCost = currentItem.getMostResourceEfficient(minimalTier, countWater, usePreferred, subtractByproducts);
 				this.smartObjectAddition(resources, partCost, parts[b][1]);//accumulates resource cost from each ingredient, recursively
 			}
-			for (let b in resources){//adds up every resource by number
+			for (let b in resources){//adds up every resource into one number
 				value += resources[b];
 			}
 			if (value < cheapestValue){
@@ -346,66 +400,19 @@ class Item{
 			}
 		}
 		this.mostResourceEfficient = this.recipes[cheapest];
-		return totalResources;
+		return [totalResources, cheapest];
 	}
 
-	getMostResourceEfficientNumber(minimalTier = 1, countWater = false, subtractByproducts = false){//TODO add converter ratios?
-		if (this.tier <= minimalTier){//for one part
-			let obj = {};
-			obj[this.type] = 1;
-			return obj;
-		}
-		let cheapest = 0;
-		let cheapestValue = 100000;
-		let totalResources = {};
-		for (let a in this.recipes){
-			let value = 0;
-			let resources = {};
-			let parts = Object.entries(this.forOnePart(a, subtractByproducts));
-			for (let b in parts){
-				let currentItem = main.getItem(parts[b][0]);
-				if (typeof currentItem === 'undefined'){
-					let x = {};
-					x[parts[b][0]] = parts[b][1];
-					this.smartObjectAddition(resources, x);
-					continue;
-				}
-				let partCost = currentItem.getMostResourceEfficient(minimalTier, countWater, subtractByproducts);
-				this.smartObjectAddition(resources, partCost, parts[b][1]);//accumulates resource cost from each ingredient, recursively
-			}
-			for (let b in resources){//adds up every resource by number
-				value += resources[b];
-			}
-			if (value < cheapestValue){
-				cheapest = a;
-				cheapestValue = value;
-				totalResources = resources;
-			}
-		}
-		return cheapest;
+	getMostResourceEfficient(minimalTier = 1, countWater = false, usePreferred = true, subtractByproducts = false){//TODO add converter ratios?
+		return this.getBestRecipeData(minimalTier, countWater, usePreferred, subtractByproducts)[0];
 	}
 
-	getRecipeData(id, minimalTier = 1, countWater = false, subtractByproducts = false){//TODO add converter ratios?
-		if (this.tier <= minimalTier){//for one part
-			let obj = {};
-			obj[this.type] = 1;
-			return obj;
-		}
-		let value = 0;
-		let resources = {};
-		let parts = Object.entries(this.forOnePart(id, subtractByproducts));
-		for (let b in parts){
-			let currentItem = main.getItem(parts[b][0]);
-			if (typeof currentItem === 'undefined'){
-				let x = {};
-				x[parts[b][0]] = parts[b][1];
-				this.smartObjectAddition(resources, x);
-				continue;
-			}
-			let partCost = currentItem.getMostResourceEfficient(minimalTier, countWater, subtractByproducts);
-			this.smartObjectAddition(resources, partCost, parts[b][1]);//accumulates resource cost from each ingredient, recursively
-		}
-		return resources;
+	getMostResourceEfficientNumber(minimalTier = 1, countWater = false, usePreferred = true, subtractByproducts = false){//TODO add converter ratios?
+		return this.getBestRecipeData(minimalTier, countWater, usePreferred, subtractByproducts)[1];
+	}
+
+	getRecipeData(id, minimalTier = 1, countWater = false, usePreferred = true, subtractByproducts = false){//TODO add converter ratios?
+		return this.getBestRecipeData(minimalTier, countWater, usePreferred, subtractByproducts, id)[0];
 	}
 
 	smartObjectAddition(obj1, obj2, multiplier = 1){//adds the second to first
@@ -429,6 +436,11 @@ class Item{
 
 	displayRecipe(id){
 		if (this.recipes.length === 0){return}
+		if (parseFloat(id) === this.preferred){
+			document.getElementById("isPreferred").checked = true;
+		} else {
+			document.getElementById("isPreferred").checked = false;
+		}
 		for (let a = 1; a <= 4; a++){
 			document.getElementById("item" + a).src = "";
 			document.getElementById("count" + a).innerHTML = "0";
@@ -457,11 +469,6 @@ class Item{
 		}
 		document.getElementById("selfcount").innerHTML = this.recipes[id].items.result;
 		document.getElementById("produced").value = this.recipes[id].actualProduction;
-		if (id === this.preferred){
-			document.getElementById("isPreferred").checked = true;
-		} else {
-			document.getElementById("isPreferred").checked = false;
-		}
 	}
 
 	changeProduction(id, num){
@@ -479,31 +486,6 @@ class Item{
 	getIngredients(amount = 1){
 		
 	}
-}
-
-
-function changeRecipe(){
-	main.getItem(document.getElementById('item name').innerHTML).displayRecipe(document.getElementById('recipe').value);
-}
-
-
-function itemCountChange(){
-	main.getItem(document.getElementById('item name').innerHTML).changeProduction(document.getElementById('recipe').value, parseFloat(document.getElementById('produced').value));
-	main.getItem(document.getElementById('item name').innerHTML).displayRecipe(document.getElementById('recipe').value);
-}
-
-
-function checkRecipe(){
-	if (document.getElementById('isPreferred').checked){
-		main.getItem(document.getElementById('item name').innerHTML).preferred = parseFloat([document.getElementById('recipe').value]);
-	} else {
-		main.getItem(document.getElementById('item name').innerHTML).preferred = main.getItem(document.getElementById('item name').innerHTML).getMostResourceEfficientNumber();
-	}
-}
-
-
-function search(){
-	main.getItem(document.getElementById('search').value).displayItem();
 }
 
 
