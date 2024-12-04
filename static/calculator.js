@@ -3,6 +3,7 @@ class Main{
 		this.getMyData();
 		this.items = [];
 		this.loaded = false;
+		this.productionSetups = [];
 		setTimeout((obj) => {obj.startingSequence()}, 1000, this);
 	}
 
@@ -11,6 +12,16 @@ class Main{
 		this.unpackJson(received);
 		for (let a in this.items){
 			this.items[a] = new Item(this.items[a]);
+		}
+		this.loadSetup(0);
+	}
+
+	loadSetup(id){
+		for (let a in this.items){
+			this.items[a].clearProduction();
+		}
+		for (let a in this.productionSetups[id]){
+			this.getItem(a).loadProduction(this.productionSetups[id][a]);
 		}
 	}
 
@@ -249,6 +260,31 @@ class Main{
 		}
 	}
 
+	makeJsonReadable(json){
+		let a = this.packJson(json);
+		let previous = 0;
+		let array = [];
+		for (let b = 0; b < a.length; b++){
+			if (a[b] === "," || a[b] === ":"){
+				array.push(a.slice(previous, b + 1));
+				previous = b + 1;
+			}
+		}
+		array.push(a.slice(previous, a.length));
+		let string = array.join(" ");
+		previous = 0;
+		array = [];
+		for (let b = 0; b < string.length; b++){
+			if (string[b] === "," && string[b - 1] === "}"){
+				array.push(string.slice(previous, b + 1));
+				previous = b + 1;
+			}
+		}
+		array.push(string.slice(previous, string.length));
+		string = array.join("\n");
+		return string;
+	}
+
 	sendMyData(something){
 		let url = '/write';
 		fetch(url, {
@@ -274,6 +310,31 @@ class Main{
 			received = txt;
 		})
 	}
+
+	sortRecipes(){
+        let temp = [...this.items];
+        let sorted = [];
+        let len = temp.length;
+        for (let a = 0; a < len; a++){
+            let recipeCost = 0;
+            let maxId = 0;
+            for (let b in temp){
+                let cost = temp[b].getBestRecipeData(1, false, undefined, false)[0];
+                let accum = 0;
+                for (let c in cost){
+                    accum += cost[c];
+                }
+                if (accum > recipeCost){
+                    recipeCost = accum;
+                    maxId = b;
+                }
+            }
+            let slic = temp.splice(maxId, 1)[0];
+            sorted.push({cost: recipeCost, item: slic.type, tier: slic.tier, ficsitPoints: slic.ficsitPoints, point_per_resource: slic.ficsitPoints/recipeCost});
+        }
+        console.log(sorted);
+	}
+
 	//handler functions
 	changeRecipe(){
 		main.getItem(document.getElementById('item name').innerHTML).displayRecipe(document.getElementById('recipe').value);
@@ -318,6 +379,26 @@ class Main{
 		a.displayRecipe(bestNum);
 		document.getElementById('recipe').value = bestNum;
 	}
+
+	changeTier(){
+		let a = main.getItem(document.getElementById('item name').innerHTML);
+		a.tier = parseFloat(document.getElementById('tier').value);
+	}
+
+	changePoints(){
+		let a = main.getItem(document.getElementById('item name').innerHTML);
+		a.points = parseFloat(document.getElementById('points').value);
+	}
+
+	getCurrent(){
+		return main.getItem(document.getElementById('item name').innerHTML);
+	}
+
+	enterHandler(){
+	    if (event.keyCode === 13){
+	        this.search();
+	    }
+	}
 }
 
 
@@ -340,6 +421,23 @@ class Item{
 		for (let a in params){
 			this[a] = params[a];
 		}
+		this.clearProduction();
+	}
+
+	redefineTier(){
+		for (let a in this.recipes){
+			let tier = 0;
+			for (let b in this.recipes[a].items){
+				if (b === "result"){continue}
+				if (typeof main.getItem(b) === "undefined"){continue}
+				if (main.getItem(b).tier > tier){
+					tier = main.getItem(b).tier;
+				}
+			}
+			if (tier < this.tier){
+				this.tier = tier + 1;
+			}
+		}
 	}
 
 	forOnePart(recipeId, subtractByproducts = false){
@@ -356,7 +454,7 @@ class Item{
 		return obj;
 	}
 
-	getBestRecipeData(minimalTier, countWater, usePreferred = true, subtractByproducts, id = -1){//if id is -1, will pick best recipe, otherwise, id one
+	getBestRecipeData(minimalTier, countWater, usePreferred = true, subtractByproducts, id = -1, chain = false){//if id is -1, will pick best recipe, otherwise, id one
 		if (this.tier <= minimalTier){//for one part
 			let obj = {};
 			obj[this.type] = 1;
@@ -374,10 +472,15 @@ class Item{
 			a0 = this.preferred;
 			recipesLength = a0 + 1;
 		}
+		let temporalChain = {};
 		for (let a = a0; a < recipesLength; a++){
 			let value = 0;
 			let resources = {};
 			let parts = Object.entries(this.forOnePart(a, subtractByproducts));
+			let temporalierChain = false;
+			if (chain){
+				temporalierChain = {};
+			}
 			for (let b in parts){
 				if (parts[b][0] === "water" && !countWater){continue}
 				let currentItem = main.getItem(parts[b][0]);
@@ -387,8 +490,11 @@ class Item{
 					this.smartObjectAddition(resources, x);
 					continue;
 				}
-				let partCost = currentItem.getMostResourceEfficient(minimalTier, countWater, usePreferred, subtractByproducts);
-				this.smartObjectAddition(resources, partCost, parts[b][1]);//accumulates resource cost from each ingredient, recursively
+				let nextData = currentItem.getBestRecipeData(minimalTier, countWater, usePreferred, subtractByproducts, undefined, temporalierChain);//partcost, cheapest, chain
+				this.smartObjectAddition(resources, nextData[0], parts[b][1]);//accumulates resource cost from each ingredient, recursively
+				if (chain){
+					this.smartObjectAddition(temporalierChain, nextData[2], parts[b][1]);
+				}
 			}
 			for (let b in resources){//adds up every resource into one number
 				value += resources[b];
@@ -397,10 +503,21 @@ class Item{
 				cheapest = a;
 				cheapestValue = value;
 				totalResources = resources;
+				if (chain){
+					temporalChain = temporalierChain;
+				}
 			}
 		}
-		this.mostResourceEfficient = this.recipes[cheapest];
-		return [totalResources, cheapest];
+		if (chain){
+			chain = {};
+			let a = {};
+			a[this.type] = 1;
+			this.smartObjectAddition(chain, temporalChain);
+			this.smartObjectAddition(chain, a);
+		}
+
+		//this.mostResourceEfficient = this.recipes[cheapest];
+		return [totalResources, cheapest, chain];
 	}
 
 	getMostResourceEfficient(minimalTier = 1, countWater = false, usePreferred = true, subtractByproducts = false){//TODO add converter ratios?
@@ -415,6 +532,14 @@ class Item{
 		return this.getBestRecipeData(minimalTier, countWater, usePreferred, subtractByproducts, id)[0];
 	}
 
+	getProductionChain(amount = 1, minimalTier = 1, countWater = false, usePreferred = true, subtractByproducts = false){//TODO add converter ratios?
+		let a = this.getBestRecipeData(minimalTier, countWater, usePreferred, subtractByproducts, undefined, {});
+		let b = {};
+		this.smartObjectAddition(b, a[2], amount);
+		this.smartObjectAddition(b, a[0], amount);
+		return main.makeJsonReadable(b);
+	}
+
 	smartObjectAddition(obj1, obj2, multiplier = 1){//adds the second to first
 		for (let a in obj2){
 			if (typeof obj1[a] !== 'undefined'){
@@ -422,6 +547,12 @@ class Item{
 			} else {
 				obj1[a] = obj2[a] * multiplier;
 			}
+		}
+	}
+
+	loadProduction(prod){//{2: 30}
+		for (let a in prod){
+			this.recipes[a].actualProduction = prod[a];
 		}
 	}
 
@@ -473,6 +604,12 @@ class Item{
 
 	changeProduction(id, num){
 	    this.recipes[id].actualProduction = num;
+	}
+
+	clearProduction(){
+		for (let a in this.recipes){
+			this.recipes[a].actualProduction = 0;
+		}
 	}
 
 	getActualProduction(){
